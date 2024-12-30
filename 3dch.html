@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Convex Hull Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            color: #312e81;
+            background:#ede9fe;
+        }
+
+        header {
+            background: linear-gradient(to right, #34d399, #a78bfa, #fbcfe8);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #ui, #description {
+            position: absolute;
+            top: 150px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        #ui {
+            left: 20px;
+            width: 300px;
+        }
+
+        #description {
+            right: 20px;
+            width: 400px;
+        }
+
+        #ui h3, #description h3 {
+            margin-top: 0;
+            font-size: 20px;
+            color: #4f46e5;
+        }
+
+        #ui textarea {
+            width: 100%;
+            resize: none;
+            margin: 10px 0;
+            padding: 8px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        #ui button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+            color: white;
+            background-color: #4f46e5;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        #ui button:hover {
+            background-color: #3730a3;
+        }
+
+        #description ul {
+            padding-left: 20px;
+            margin: 10px 0;
+        }
+
+        #description li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>3D Convex Hull Simulation</h1>
+    </header>
+    <div id="ui">
+        <textarea id="pointsInput" rows="10" placeholder="Enter points as [[x1, y1, z1], [x2, y2, z2], ...]"></textarea>
+        <button id="plotButton">Plot Convex Hull</button>
+    </div>
+
+    <div id="description">
+        <h3>About the Algorithm</h3>
+        <p>The visualization uses the <strong>Gift Wrapping Algorithm</strong> to compute the convex hull in 3D space. A convex hull is the smallest convex shape that can enclose all given points.</p>
+        <h4>Steps of the Algorithm:</h4>
+        <ul>
+            <li><strong>Step 1:</strong> Choose three non-collinear points to form the base of a triangle.</li>
+            <li><strong>Step 2:</strong> Compute the plane defined by the triangle and calculate its normal vector.</li>
+            <li><strong>Step 3:</strong> Verify that all points lie on one side of the plane (not inside).</li>
+            <li><strong>Step 4:</strong> Repeat this process for all possible triangles and collect the ones forming the hull.</li>
+            <li><strong>Step 5:</strong> Visualize the computed facets and points using Three.js.</li>
+        </ul>
+        <p>This method is computationally intensive, especially for larger sets of points, as it involves evaluating all possible combinations of triangles.</p>
+    </div>
+    <script>
+        // Utility to compute the convex hull using the Gift Wrapping algorithm
+        function computeConvexHull(points) {
+            if (points.length < 4) return [];
+            const facets = [];
+            const n = points.length;
+
+            function normal(p1, p2, p3) {
+                const u = [p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]];
+                const v = [p3[0] - p1[0], p3[1] - p1[1], p3[2] - p1[2]];
+                return [
+                    u[1] * v[2] - u[2] * v[1],
+                    u[2] * v[0] - u[0] * v[2],
+                    u[0] * v[1] - u[1] * v[0],
+                ];
+            }
+
+            function isPositive(p, plane) {
+                const [n, d] = plane;
+                return n[0] * p[0] + n[1] * p[1] + n[2] * p[2] + d > 0;
+            }
+
+            for (let i = 0; i < n - 2; i++) {
+                for (let j = i + 1; j < n - 1; j++) {
+                    for (let k = j + 1; k < n; k++) {
+                        const planeNormal = normal(points[i], points[j], points[k]);
+                        const d = -(
+                            planeNormal[0] * points[i][0] +
+                            planeNormal[1] * points[i][1] +
+                            planeNormal[2] * points[i][2]
+                        );
+                        const plane = [planeNormal, d];
+                        if (points.every((p, index) => index === i || index === j || index === k || !isPositive(p, plane))) {
+                            facets.push([points[i], points[j], points[k]]);
+                        }
+                    }
+                }
+            }
+
+            return facets;
+        }
+
+        // Visualization using Three.js
+        function visualizeConvexHull(points, facets) {
+            document.body.querySelector('canvas')?.remove();
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0xffffff); // Set the background to white
+            document.body.appendChild(renderer.domElement);
+
+            const pointMaterial = new THREE.PointsMaterial({ size: 0.1, color: 0x0000ff });
+            const pointGeometry = new THREE.BufferGeometry();
+            pointGeometry.setAttribute('position', new THREE.Float32BufferAttribute(points.flat(), 3));
+            const pointCloud = new THREE.Points(pointGeometry, pointMaterial);
+            scene.add(pointCloud);
+
+            facets.forEach(facet => {
+                const geometry = new THREE.BufferGeometry();
+                const vertices = new Float32Array(facet.flat());
+                geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+                geometry.setIndex([0, 1, 2, 0]);
+                const material = new THREE.LineBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.6 });
+                const mesh = new THREE.Line(geometry, material);
+                scene.add(mesh);
+            });
+
+            camera.position.z = 5;
+
+            function animate() {
+                scene.rotation.y += 0.01;
+                renderer.render(scene, camera);
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        document.getElementById('plotButton').addEventListener('click', () => {
+            const pointsInput = document.getElementById('pointsInput').value;
+            try {
+                const points = JSON.parse(pointsInput);
+                const facets = computeConvexHull(points);
+                visualizeConvexHull(points, facets);
+            } catch (error) {
+                alert('Invalid input. Ensure points are in the correct format.');
+            }
+        });
+    </script>
+</body>
+</html>

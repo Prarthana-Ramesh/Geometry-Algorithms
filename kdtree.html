@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KD-Tree Visualization</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            background: #ede9fe;
+            color: #312e81;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+        width: 100%;
+        text-align: center;
+        padding: 20px 0;
+        background: linear-gradient(to right, #34d399, #a78bfa, #fbcfe8);
+        color: #fff;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    header h1 {
+        margin: 0;
+        font-size: 2.5rem;
+        text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.3);
+    }
+
+        #description {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            border-radius: 10px;
+            transition: transform 0.2s ease-in-out;
+        }
+
+        #description:hover {
+            transform: scale(1.02);
+        }
+
+        #description h3 {
+            margin-top: 0;
+            color: #4f46e5;
+        }
+
+        #ui {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            border-radius: 10px;
+        }
+
+        #ui textarea {
+            width: 300px;
+            height: 80px;
+            resize: none;
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #eef2f7, #ffffff);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        #ui button {
+            padding: 10px 20px;
+            font-size: 14px;
+            color: #fff;
+            background: #818cf8;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: transform 0.2s ease-in-out, background-color 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        #ui button:hover {
+            background: #818cf8;
+            transform: scale(1.05);
+        }
+
+        canvas {
+            border: 2px solid #ccc;
+            display: block;
+            margin: 20px auto;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #eef2f7, #ffffff);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        footer {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 0.9rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>KD-Tree Visualization</h1>
+    </header>
+
+    <div id="description">
+        <h3>About KD-Tree Algorithm</h3>
+        <p>The KD-Tree (k-dimensional tree) is a data structure used for organizing points in a k-dimensional space. It is particularly useful for nearest-neighbor searches and range queries.</p>
+        <ul>
+            <li>Points are recursively divided by alternating axes (x, y, etc.).</li>
+            <li>Median points form nodes, and left/right subtrees handle divisions.</li>
+        </ul>
+        <p>Range queries efficiently find points within a bounding box.</p>
+    </div>
+
+    <div id="ui">
+        <textarea id="pointsInput" placeholder="Enter points: [[x1, y1], [x2, y2], ...]"></textarea>
+        <textarea id="boxInput" placeholder="Enter bounding box: [[x_min, y_min], [x_max, y_max]]"></textarea>
+        <button id="buildTreeButton">Build KD-Tree</button>
+        <button id="searchButton">Search Box</button>
+    </div>
+
+    <canvas id="canvas" width="800" height="600"></canvas>
+
+    <footer>
+        &copy; 2024 KD-Tree Visualizer | Built for educational purposes
+    </footer>
+
+    <script>
+        // KD-Tree Node
+        class Node {
+            constructor(point) {
+                this.point = point;
+                this.left = null;
+                this.right = null;
+            }
+        }
+
+        // KD-Tree Implementation
+        class KDTree {
+            constructor(points) {
+                this.points = points;
+                this.root = null;
+            }
+
+            build(points, depth = 0) {
+                if (!points.length) return null;
+
+                const axis = depth % 2;
+                points.sort((a, b) => a[axis] - b[axis]);
+                const median = Math.floor(points.length / 2);
+
+                const node = new Node(points[median]);
+                node.left = this.build(points.slice(0, median), depth + 1);
+                node.right = this.build(points.slice(median + 1), depth + 1);
+                return node;
+            }
+
+            construct() {
+                this.root = this.build(this.points);
+            }
+
+            inBox(point, box) {
+                const [x, y] = point;
+                const [[xMin, yMin], [xMax, yMax]] = box;
+                return x >= xMin && x <= xMax && y >= yMin && y <= yMax;
+            }
+
+            searchBox(node, box, depth = 0) {
+                if (!node) return [];
+
+                const axis = depth % 2;
+                const results = [];
+
+                if (this.inBox(node.point, box)) {
+                    results.push(node.point);
+                }
+
+                if (node.left && box[0][axis] <= node.point[axis]) {
+                    results.push(...this.searchBox(node.left, box, depth + 1));
+                }
+
+                if (node.right && box[1][axis] >= node.point[axis]) {
+                    results.push(...this.searchBox(node.right, box, depth + 1));
+                }
+
+                return results;
+            }
+        }
+
+        // Visualization Function
+        function drawKDTree(points, box, pointsInBox, canvas) {
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const normalize = ([x, y]) => [x * canvas.width, y * canvas.height];
+
+            // Draw all points
+            points.forEach(([x, y]) => {
+                const [nx, ny] = normalize([x, y]);
+                ctx.fillStyle = 'blue';
+                ctx.beginPath();
+                ctx.arc(nx, canvas.height - ny, 5, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+
+            // Highlight points in the box
+            pointsInBox.forEach(([x, y]) => {
+                const [nx, ny] = normalize([x, y]);
+                ctx.fillStyle = 'red';
+                ctx.beginPath();
+                ctx.arc(nx, canvas.height - ny, 5, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+
+            // Draw bounding box
+            if (box) {
+                const [[xMin, yMin], [xMax, yMax]] = box.map(normalize);
+                ctx.strokeStyle = 'green';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(
+                    xMin,
+                    canvas.height - yMax,
+                    xMax - xMin,
+                    yMax - yMin
+                );
+            }
+        }
+
+        // Event Listeners
+        document.getElementById('buildTreeButton').addEventListener('click', () => {
+            const pointsInput = document.getElementById('pointsInput').value.trim();
+            try {
+                const points = JSON.parse(pointsInput);
+                kdTree = new KDTree(points);
+                kdTree.construct();
+                alert('KD-Tree built successfully!');
+            } catch (error) {
+                alert('Invalid points input. Ensure it follows the format [[x1, y1], [x2, y2], ...].');
+            }
+        });
+
+        document.getElementById('searchButton').addEventListener('click', () => {
+            const boxInput = document.getElementById('boxInput').value.trim();
+            const canvas = document.getElementById('canvas');
+            try {
+                const box = JSON.parse(boxInput);
+                const pointsInBox = kdTree.searchBox(kdTree.root, box);
+                drawKDTree(kdTree.points, box, pointsInBox, canvas);
+            } catch (error) {
+                alert('Invalid bounding box input. Ensure it follows the format [[x_min, y_min], [x_max, y_max]].');
+            }
+        });
+
+        let kdTree = null;
+    </script>
+</body>
+</html>

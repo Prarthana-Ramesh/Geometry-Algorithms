@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2D Convex Hull Simulation</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 0;
+      background-color: #e0e7ff; /* Indigo background from main page */
+      color: #333;
+    }
+    header {
+      background: linear-gradient(to right, #34d399, #a78bfa, #fbcfe8);/* Gradient: Indigo-400 to Pink-400 */
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+    main {
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      background-color: linear-gradient(to right, #34d399, #a78bfa, #fbcfe8);
+      color: #f5f5fa; /* Indigo-600 */
+    }
+    h2 {
+      color: #4f46e5; /* Indigo-600 */
+    }
+
+    canvas {
+      border: 2px solid #9333ea; /* Purple-600 */
+      cursor: crosshair;
+      display: block;
+      margin: 20px auto;
+      max-width: 100%;
+      height: auto;
+    }
+    #instructions {
+      margin-bottom: 10px;
+      font-size: 1rem;
+    }
+    section {
+      margin-top: 30px;
+    }
+    ul {
+      text-align: left;
+      margin: 10px 0;
+    }
+    button {
+      background-color: #4f46e5; /* Indigo-600 */
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 1rem;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    button:hover {
+      background-color: #3730a3; /* Indigo-800 */
+    }
+    .point-counter {
+      font-size: 1rem;
+      margin-top: 10px;
+      color: #3730a3; /* Indigo-800 */
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>2D Convex Hull Simulation</h1>
+  </header>
+  <main>
+    <h2>Interactive Convex Hull Finder</h2>
+    <p id="instructions">Click on the canvas to add points. The convex hull will be displayed automatically as a red outline.</p>
+    <canvas id="canvas" width="600" height="400"></canvas>
+    <div class="point-counter" id="pointCounter">Points: 0</div>
+    <button id="clearCanvas">Clear Canvas</button>
+
+    <section>
+      <h2>About the Convex Hull Algorithm</h2>
+      <p>The convex hull of a set of points is the smallest convex polygon that can enclose all the points. In computational geometry, it is a fundamental problem with applications in pattern recognition, image processing, and robotics.</p>
+    </section>
+
+    <section>
+      <h2>Steps of the Convex Hull Algorithm</h2>
+      <p>This implementation uses the <strong>Monotone Chain Algorithm</strong> (a variation of Graham's Scan):</p>
+      <ul>
+        <li>Sort the points in ascending order of x-coordinates (and y-coordinates if x-coordinates are the same).</li>
+        <li>Build the lower hull by iterating through the sorted points and removing points that form a right turn.</li>
+        <li>Build the upper hull by iterating through the points in reverse order, following the same logic.</li>
+        <li>Combine the lower and upper hulls to form the complete convex hull.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      'use strict';
+
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      const points = [];
+      const pointCounter = document.getElementById('pointCounter');
+      const clearButton = document.getElementById('clearCanvas');
+
+      // Convex Hull function
+      function convexHull(points) {
+        points.sort((a, b) => a.x !== b.x ? a.x - b.x : a.y - b.y);
+
+        const n = points.length;
+        const hull = [];
+
+        for (let i = 0; i < 2 * n; i++) {
+          const j = i < n ? i : 2 * n - 1 - i;
+          while (hull.length >= 2 && removeMiddle(hull[hull.length - 2], hull[hull.length - 1], points[j]))
+            hull.pop();
+          hull.push(points[j]);
+        }
+
+        hull.pop();
+        return hull;
+      }
+
+      function removeMiddle(a, b, c) {
+        const cross = (a.x - b.x) * (c.y - b.y) - (a.y - b.y) * (c.x - b.x);
+        const dot = (a.x - b.x) * (c.x - b.x) + (a.y - b.y) * (c.y - b.y);
+        return cross < 0 || (cross === 0 && dot <= 0);
+      }
+
+      function drawPoints() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#0078d7'; // Blue
+        points.forEach(point => {
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, 3, 0, 2 * Math.PI);
+          ctx.fill();
+        });
+      }
+
+      function drawHull(hull) {
+        if (hull.length < 2) return;
+        ctx.strokeStyle = '#db2777'; // Red
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(hull[0].x, hull[0].y);
+        for (let i = 1; i < hull.length; i++) {
+          ctx.lineTo(hull[i].x, hull[i].y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      }
+
+      canvas.addEventListener('click', event => {
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        points.push({ x, y });
+
+        drawPoints();
+
+        const hull = convexHull(points);
+        drawHull(hull);
+
+        pointCounter.textContent = `Points: ${points.length}`;
+      });
+
+      clearButton.addEventListener('click', () => {
+        points.length = 0;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        pointCounter.textContent = 'Points: 0';
+      });
+    })();
+  </script>
+</body>
+</html>

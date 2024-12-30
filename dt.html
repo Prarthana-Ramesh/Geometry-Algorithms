@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delaunay Triangulation</title>
+    <style>
+        /* General body styling */
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: linear-gradient(to bottom, #e0e7ff, #e9d5ff);
+            color: #3730a3;
+        }
+        header {
+      background: linear-gradient(to right, #34d399, #a78bfa, #fbcfe8); /* Gradient: Indigo-400 to Pink-400 */
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+        /* Page title styling */
+        h1 {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 2.5rem;
+            color: #ffffff;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Container styling */
+        #container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+            border-radius: 8px;
+            background: #ffffff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Canvas styling */
+        canvas {
+            border: 2px solid #4f46e5;
+            border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            margin-top: 20px;
+            background: #f9fafb;
+        }
+
+        /* Algorithm details section styling */
+        #algorithmDetails {
+            max-width: 800px;
+            background-color: #ffffff;
+            border: 1px solid #ddd;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-top: 30px;
+            border-radius: 8px;
+        }
+
+        #algorithmDetails h2 {
+            margin-top: 0;
+            font-size: 1.8rem;
+            color: #4f46e5;
+        }
+
+        #algorithmDetails p {
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        #algorithmDetails ul {
+            padding-left: 20px;
+        }
+
+        #algorithmDetails ul li {
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        /* Button styling */
+        #resetButton {
+            margin-top: 15px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background: #4f46e5;
+            color: #ffffff;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            transition: background 0.3s ease;
+        }
+
+        #resetButton:hover {
+            background: #3730a3;
+        }
+
+    </style>
+</head>
+<body>
+    <header><h1>Delaunay Triangulation</h1></header>
+    <div id="container">
+        <canvas id="voronoiCanvas" width="800" height="600"></canvas>
+        <button id="resetButton">Reset Points</button>
+        <div id="algorithmDetails">
+            <h2>Algorithm Details</h2>
+            <p>The Voronoi diagram and Delaunay triangulation are fundamental geometric constructs. Here's a brief description of the algorithms used in this simulation:</p>
+            <ul>
+                <li><strong>Step 1:</strong> Points are added dynamically by clicking on the canvas. Each point represents a vertex in the Voronoi diagram and Delaunay triangulation.</li>
+                <li><strong>Step 2:</strong> For each pixel, the closest point is calculated, and boundaries between regions are determined (Voronoi edges).</li>
+                <li><strong>Step 3:</strong> Midpoints and edges connecting points to their second-closest neighbors are calculated to simulate the triangulation.</li>
+                <li><strong>Step 4:</strong> The resulting edges and points are rendered on the canvas in real-time.</li>
+            </ul>
+            <p>This implementation uses a brute-force approach for simplicity. Optimized algorithms like Fortune's sweep line can be used for large datasets.</p>
+        </div>
+    </div>
+    <script>
+        class Point {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+            }
+        }
+    
+        class Edge {
+            constructor(start, end) {
+                this.start = start;
+                this.end = end;
+            }
+        }
+    
+        class VoronoiDiagram {
+            constructor(points, width, height, resolution = 10) {
+                this.points = points;
+                this.width = width;
+                this.height = height;
+                this.edges = [];
+                this.resolution = resolution; // Lower resolution for faster computation
+            }
+    
+            generate() {
+                this.edges = [];
+                const step = this.resolution; // Step size for sampling
+                const grid = new Map();
+    
+                for (let x = 0; x <= this.width; x += step) {
+                    for (let y = 0; y <= this.height; y += step) {
+                        let closest = null;
+                        let minDist = Infinity;
+    
+                        for (const point of this.points) {
+                            const dist = this.distance(new Point(x, y), point);
+                            if (dist < minDist) {
+                                closest = point;
+                                minDist = dist;
+                            }
+                        }
+    
+                        if (closest) {
+                            grid.set(`${x},${y}`, closest);
+                        }
+                    }
+                }
+    
+                // Generate edges
+                this.createEdges(grid, step);
+            }
+    
+            createEdges(grid, step) {
+                const visited = new Set();
+    
+                for (const [key, closest] of grid) {
+                    const [x, y] = key.split(',').map(Number);
+                    const neighbors = [
+                        [x + step, y],
+                        [x - step, y],
+                        [x, y + step],
+                        [x, y - step],
+                    ];
+    
+                    for (const [nx, ny] of neighbors) {
+                        const neighborKey = `${nx},${ny}`;
+                        if (grid.has(neighborKey) && grid.get(neighborKey) !== closest) {
+                            const neighbor = grid.get(neighborKey);
+                            const edgeKey = `${closest.x},${closest.y},${neighbor.x},${neighbor.y}`;
+                            if (!visited.has(edgeKey)) {
+                                this.edges.push(new Edge(closest, neighbor));
+                                visited.add(edgeKey);
+                            }
+                        }
+                    }
+                }
+            }
+    
+            distance(p1, p2) {
+                return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+            }
+        }
+    
+        const canvas = document.getElementById('voronoiCanvas');
+        const context = canvas.getContext('2d');
+    
+        const points = [];
+        const voronoi = new VoronoiDiagram(points, canvas.width, canvas.height, 15);
+    
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+    
+            points.push(new Point(x, y));
+            voronoi.generate();
+            draw();
+        });
+    
+        document.getElementById('resetButton').addEventListener('click', () => {
+            points.length = 0;
+            voronoi.edges.length = 0;
+            draw();
+        });
+    
+        function draw() {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+    
+            // Draw edges
+            context.strokeStyle = 'black';
+            context.lineWidth = 1;
+            for (const edge of voronoi.edges) {
+                context.beginPath();
+                context.moveTo(edge.start.x, edge.start.y);
+                context.lineTo(edge.end.x, edge.end.y);
+                context.stroke();
+            }
+    
+            // Draw points
+            context.fillStyle = 'red';
+            for (const point of points) {
+                context.beginPath();
+                context.arc(point.x, point.y, 3, 0, 2 * Math.PI);
+                context.fill();
+            }
+        }
+    </script>
+    
+</body>
+</html>

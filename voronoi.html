@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Voronoi Diagram</title>
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(to bottom, #e0e7ff, #e9d5ff);
+      color: #312e81;
+    }
+
+    header {
+      background: linear-gradient(to right, #34d399, #a78bfa, #fbcfe8);;
+      color: #fff;
+      padding: 20px 0;
+      text-align: center;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 2.5rem;
+      text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    section {
+      max-width: 900px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #fff;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+      border-radius: 10px;
+      transition: transform 0.2s ease-in-out;
+    }
+
+    section:hover {
+      transform: scale(1.02);
+    }
+
+    section h2 {
+      margin-top: 0;
+      color: #4f46e5;
+    }
+    .canvas-container {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    position: relative;
+    aspect-ratio: 16 / 9; /* Keeps canvas proportional */
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #eef2f7, #ffffff);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+  }
+
+    canvas {
+      width: 100%;
+    height: 100%;
+      border: 2px solid #ccc;
+      display: block;
+      margin: 20px auto;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #eef2f7, #ffffff);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+    }
+
+    .center {
+      text-align: center;
+    }
+
+    footer {
+      text-align: center;
+      margin: 20px 0;
+      font-size: 0.9rem;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Interactive Voronoi Diagram</h1>
+  </header>
+
+  <section>
+    <h2>About Voronoi Diagrams</h2>
+    <p>
+      A Voronoi diagram partitions a plane into regions based on the distance to a set of points. 
+      Each region contains all points closer to one seed (input point) than to any other.
+    </p>
+    <p>
+      These diagrams are widely used in computer graphics, spatial analysis, and geographic information systems (GIS).
+    </p>
+  </section>
+
+  <section>
+    <h2>Algorithm Overview</h2>
+    <p>The Voronoi diagram is constructed using the following steps:</p>
+    <ol>
+      <li>Initialize a set of seed points on the canvas.</li>
+      <li>For each point in the canvas, compute the nearest seed point.</li>
+      <li>Partition the canvas into polygons where each polygon contains all points closest to a specific seed.</li>
+      <li>Draw edges between polygons to form the Voronoi diagram.</li>
+    </ol>
+  </section>
+
+  <section class="center">
+    <h2>Interactive Canvas</h2>
+    <p>Click on the canvas to add points and watch the Voronoi diagram update in real time!</p>
+    <canvas id="voronoiCanvas" width="960" height="500"></canvas>
+  </section>
+
+  <script>
+    // Select the canvas and set up context
+    const canvas = document.getElementById("voronoiCanvas");
+    const context = canvas.getContext("2d");
+    const width = canvas.width;
+    const height = canvas.height;
+
+    // Array to store user-selected points
+    let sites = [];
+
+    // Voronoi generator with canvas dimensions
+    const voronoi = d3.voronoi()
+        .extent([[-1, -1], [width + 1, height + 1]]);
+
+    // Event listener for mouse clicks
+    canvas.addEventListener("click", (event) => {
+      // Get the mouse position relative to the canvas
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = event.clientX - rect.left;
+      const mouseY = event.clientY - rect.top;
+
+      // Add the new site (point) to the array
+      sites.push([mouseX, mouseY]);
+
+      // Redraw the Voronoi diagram
+      redraw();
+    });
+
+    function redraw() {
+      // Compute the Voronoi diagram
+      const diagram = voronoi(sites);
+      const polygons = diagram.polygons();
+      const links = diagram.links();
+
+      // Clear the canvas
+      context.clearRect(0, 0, width, height);
+
+      // Draw Voronoi cells
+      polygons.forEach(drawCell);
+      context.strokeStyle = "#4f46e5";
+      context.stroke();
+
+      // Draw Voronoi links
+      links.forEach(drawLink);
+      context.strokeStyle = "rgba(0, 0, 0, 0.2)";
+      context.stroke();
+
+      // Draw sites
+      sites.forEach(drawSite);
+    }
+
+    function drawSite(site) {
+      // Draw a small circle at the site position
+      context.beginPath();
+      context.arc(site[0], site[1], 5, 0, 2 * Math.PI, false);
+      context.fillStyle = "#db2777";
+      context.fill();
+      context.lineWidth = 1;
+      context.strokeStyle = "#fff";
+      context.stroke();
+    }
+
+    function drawLink(link) {
+      // Draw a line between the link source and target
+      context.beginPath();
+      context.moveTo(link.source[0], link.source[1]);
+      context.lineTo(link.target[0], link.target[1]);
+      context.lineWidth = 1.5;
+      context.strokeStyle = "rgba(0, 0, 0, 0.5)";
+      context.stroke();
+    }
+
+    function drawCell(cell) {
+      // Draw the polygon for a Voronoi cell
+      if (!cell) return;
+      context.beginPath();
+      context.moveTo(cell[0][0], cell[0][1]);
+      for (let j = 1; j < cell.length; j++) {
+        context.lineTo(cell[j][0], cell[j][1]);
+      }
+      context.closePath();
+      context.fillStyle = `rgba(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255}, 0.5)`;
+      context.fill();
+    }
+  </script>
+</body>
+</html>
