@@ -1,8 +1,10 @@
 # **Visualization of Geometric Algorithms**
 
 ## **Overview**
-This project brings fundamental geometric algorithms to life through interactive, web-based visualizations. Leveraging JavaScript and HTML5 Canvas, users can engage with these algorithms in real-time, deepening their understanding of computational geometry concepts.
+This project demonstrates fundamental geometric algorithms using interactive, web-based visualizations. Built with JavaScript and HTML5 Canvas, it allows users to explore concepts such as Convex Hulls, KD Trees, Delaunay Triangulations, and Voronoi Diagrams through practical examples and visual feedback.
+
 [DEMO](https://prarthana-ramesh.github.io/Geometry-Algorithms/)
+
 ## **Implemented Algorithms**
 
 ### **2D Convex Hull**
